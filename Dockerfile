@@ -3,31 +3,28 @@ COPY build/fetch_binaries.sh /tmp/fetch_binaries.sh
 
 RUN apt-get update && apt-get install -y \
   curl \
-  wget
+  wget \ 
+  git \ 
+  unzip
 
 RUN /tmp/fetch_binaries.sh
 
-FROM alpine:3.21.0
+FROM debian:stable-slim as final
 
-RUN set -ex \
-    && echo "http://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories \
-    && echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories \
-    && echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories \
-    && apk update \
-    && apk upgrade \
-    && apk add --no-cache \
+RUN apt-get update && apt-get install -y \
+    git \
     apache2-utils \
     bash \
-    bind-tools \
+    dnsutils \                     
     bird \
     bridge-utils \
-    busybox-extras \
-    conntrack-tools \
+    busybox \
+    conntrack \
     curl \
     dhcping \
-    drill \
+    dnsutils \                     
     ethtool \
-    file\
+    file \
     fping \
     iftop \
     iperf \
@@ -36,46 +33,44 @@ RUN set -ex \
     ipset \
     iptables \
     iptraf-ng \
-    iputils \
+    iputils-ping \                
     ipvsadm \
     httpie \
     jq \
-    libc6-compat \
-    liboping \
+    liboping0 \
     ltrace \
     mtr \
-    net-snmp-tools \
+    snmp \
     netcat-openbsd \
     nftables \
     ngrep \
     nmap \
-    nmap-nping \
-    nmap-scripts \
     openssl \
-    py3-pip \
-    py3-setuptools \
-    scapy \
+    python3-pip \
+    python3-setuptools \
     socat \
     speedtest-cli \
-    openssh \
-    oh-my-zsh \
+    openssh-client \
     strace \
     tcpdump \
     tcptraceroute \
     tshark \
     util-linux \
     vim \
-    git \
     zsh \
-    websocat \
+    lsof \
     swaks \
-    perl-crypt-ssleay \
-    perl-net-ssleay
+    perl \
+    libnet-ssleay-perl \
+    libcrypt-ssleay-perl \
+    zsh \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Installing ctop - top-like container monitor
+# # Installing ctop - top-like container monitor
 COPY --from=fetcher /tmp/ctop /usr/local/bin/ctop
 
-# Installing calicoctl
+# # Installing calicoctl
 COPY --from=fetcher /tmp/calicoctl /usr/local/bin/calicoctl
 
 # Installing termshark
@@ -87,6 +82,10 @@ COPY --from=fetcher /tmp/grpcurl /usr/local/bin/grpcurl
 # Installing fortio
 COPY --from=fetcher /tmp/fortio /usr/local/bin/fortio
 
+#install websocat
+COPY --from=fetcher /tmp/websocat /usr/local/bin/websocat
+COPY --from=fetcher /tmp/crictl /usr/local/bin/crictl
+
 # Setting User and Home
 USER root
 WORKDIR /root
@@ -94,10 +93,16 @@ ENV HOSTNAME netshoot
 
 # ZSH Themes
 RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
-RUN git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-RUN git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+RUN ZSH_CUSTOM=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom} && \
+    git clone https://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
+
+RUN ZSH_CUSTOM=${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom} && \
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git $ZSH_CUSTOM/themes/powerlevel10k
+
 COPY zshrc .zshrc
 COPY motd motd
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip && ./aws/install && rm awscliv2.zip && rm -r aws
 
 # Fix permissions for OpenShift and tshark
 RUN chmod -R g=u /root

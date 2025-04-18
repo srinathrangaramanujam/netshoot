@@ -77,9 +77,24 @@ get_fortio() {
   chmod +x /tmp/fortio
 }
 
+get_websockat() {
+  curl -Lo /usr/local/bin/websocat "https://github.com/vi/websocat/releases/latest/download/websocat_${ARCH}" && \
+  mv "/usr/local/bin/websocat" /tmp/websocat && \
+  chmod +x /tmp/websocat
+}
+
+get_crictl() {
+  VERSION="v1.30.0" # check latest version in /releases page
+  wget "https://github.com/kubernetes-sigs/cri-tools/releases/download/${VERSION}/crictl-${VERSION}-linux-${ARCH}.tar.gz"
+  tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /tmp/
+  chmod +x /tmp/crictl
+  rm -f crictl-$VERSION-linux-${ARCH}.tar.gz
+}
 
 get_ctop
 get_calicoctl
 get_termshark
 get_grpcurl
 get_fortio
+get_websockat
+get_crictl
